@@ -1,0 +1,339 @@
+name: Deploy DSA Master Guide to GitHub Pages
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        npm install -g @marp-team/marp-cli
+        npm install -g markdown-it markdown-it-anchor markdown-it-toc-done-right
+        pip install mkdocs mkdocs-material mkdocs-awesome-pages-plugin
+        pip install mkdocs-mermaid2-plugin mkdocs-minify-plugin
+        pip install pymdown-extensions mkdocs-git-revision-date-localized-plugin
+
+    - name: Create mkdocs.yml
+      run: |
+        cat > mkdocs.yml << 'EOF'
+        site_name: DSA Master Guide - Complete C++ Guide
+        site_description: The most comprehensive Data Structures and Algorithms guide for competitive programming
+        site_author: DSA Master Guide Team
+        site_url: https://sh20raj.github.io/DSA-Master-Guide/
+        
+        repo_name: SH20RAJ/DSA-Master-Guide
+        repo_url: https://github.com/SH20RAJ/DSA-Master-Guide
+        
+        theme:
+          name: material
+          custom_dir: docs/overrides
+          features:
+            - navigation.tabs
+            - navigation.tabs.sticky
+            - navigation.sections
+            - navigation.expand
+            - navigation.path
+            - navigation.top
+            - search.highlight
+            - search.share
+            - header.autohide
+            - content.code.copy
+            - content.code.annotate
+            - content.tabs.link
+            - toc.follow
+            - toc.integrate
+          palette:
+            - scheme: default
+              primary: blue
+              accent: blue
+              toggle:
+                icon: material/brightness-7
+                name: Switch to dark mode
+            - scheme: slate
+              primary: blue
+              accent: blue
+              toggle:
+                icon: material/brightness-4
+                name: Switch to light mode
+          font:
+            text: Roboto
+            code: Roboto Mono
+          icon:
+            logo: material/code-braces
+            repo: fontawesome/brands/github
+        
+        extra:
+          social:
+            - icon: fontawesome/brands/github
+              link: https://github.com/SH20RAJ/DSA-Master-Guide
+            - icon: fontawesome/brands/twitter
+              link: https://twitter.com/DSAMasterGuide
+          analytics:
+            provider: google
+            property: G-XXXXXXXXXX
+        
+        markdown_extensions:
+          - pymdownx.highlight:
+              anchor_linenums: true
+              line_spans: __span
+              pygments_lang_class: true
+          - pymdownx.inlinehilite
+          - pymdownx.snippets
+          - pymdownx.superfences:
+              custom_fences:
+                - name: mermaid
+                  class: mermaid
+                  format: !!python/name:pymdownx.superfences.fence_code_format
+          - pymdownx.tabbed:
+              alternate_style: true
+          - pymdownx.tasklist:
+              custom_checkbox: true
+          - pymdownx.emoji:
+              emoji_index: !!python/name:materialx.emoji.twemoji
+              emoji_generator: !!python/name:materialx.emoji.to_svg
+          - admonition
+          - pymdownx.details
+          - pymdownx.critic
+          - pymdownx.caret
+          - pymdownx.keys
+          - pymdownx.mark
+          - pymdownx.tilde
+          - attr_list
+          - md_in_html
+          - toc:
+              permalink: true
+        
+        plugins:
+          - search:
+              lang: en
+          - awesome-pages
+          - git-revision-date-localized:
+              type: date
+          - minify:
+              minify_html: true
+          - mermaid2
+        
+        nav:
+          - Home: index.md
+          - Learning Path:
+            - DSA Roadmap: roadmap/dsa-roadmap.md
+            - Progress Tracker: progress-tracker.md
+          - Foundation:
+            - Introduction: 01-introduction/README.md
+            - C++ Essentials: 02-cpp-essentials/README.md
+            - Complexity Analysis: 03-complexity-analysis/README.md
+          - Core Data Structures:
+            - Arrays & Strings: 04-arrays-strings/README.md
+            - Searching: 05-searching/README.md
+            - Sorting: 06-sorting/README.md
+            - Recursion & Backtracking: 07-recursion-backtracking/README.md
+          - Advanced Structures:
+            - Linked Lists: 08-linked-lists/README.md
+            - Stacks & Queues: 09-stacks-queues/README.md
+            - Binary Trees: 10-binary-trees/README.md
+            - Graphs: 11-graphs/README.md
+            - Dynamic Programming: 12-dynamic-programming/README.md
+          - Practice:
+            - Questions by Category: questions/README.md
+            - Sample Problems: sample-problems/two-sum-variations.md
+          - Resources:
+            - Templates: templates/competitive-programming-template.md
+            - Table of Contents: table-of-contents.md
+        EOF
+
+    - name: Create docs structure
+      run: |
+        mkdir -p docs/overrides
+        cp README.md docs/index.md
+        cp -r 01-introduction docs/
+        cp -r 02-cpp-essentials docs/
+        cp -r 03-complexity-analysis docs/
+        cp -r 04-arrays-strings docs/
+        cp -r 05-searching docs/
+        cp -r 06-sorting docs/
+        cp -r 07-recursion-backtracking docs/
+        cp -r 08-linked-lists docs/
+        cp -r 09-stacks-queues docs/
+        cp -r 10-binary-trees docs/
+        cp -r 11-graphs docs/
+        cp -r 12-dynamic-programming docs/
+        cp -r sample-problems docs/
+        cp -r templates docs/
+        cp -r questions docs/ 2>/dev/null || true
+        cp -r roadmap docs/ 2>/dev/null || true
+        cp progress-tracker.md docs/
+        cp table-of-contents.md docs/
+
+    - name: Create custom theme files
+      run: |
+        mkdir -p docs/overrides/partials
+        cat > docs/overrides/main.html << 'EOF'
+        {% extends "base.html" %}
+        
+        {% block content %}
+        <div class="md-content" data-md-component="content">
+          <article class="md-content__inner md-typeset">
+            {% block before %}{% endblock %}
+            {{ page.content }}
+            {% block after %}{% endblock %}
+          </article>
+        </div>
+        {% endblock %}
+        
+        {% block scripts %}
+        {{ super() }}
+        <script>
+          // Add custom JavaScript for enhanced functionality
+          document.addEventListener('DOMContentLoaded', function() {
+            // Add copy buttons to code blocks
+            const codeBlocks = document.querySelectorAll('pre code');
+            codeBlocks.forEach(block => {
+              const button = document.createElement('button');
+              button.className = 'md-clipboard md-icon';
+              button.title = 'Copy to clipboard';
+              button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" /></svg>';
+              button.addEventListener('click', () => {
+                navigator.clipboard.writeText(block.textContent);
+                button.style.color = '#4caf50';
+                setTimeout(() => button.style.color = '', 2000);
+              });
+              block.parentElement.appendChild(button);
+            });
+            
+            // Add progress tracking
+            const chapters = document.querySelectorAll('nav a[href*="README"]');
+            const completed = localStorage.getItem('completed-chapters') || '[]';
+            const completedChapters = JSON.parse(completed);
+            
+            chapters.forEach(chapter => {
+              const href = chapter.getAttribute('href');
+              if (completedChapters.includes(href)) {
+                chapter.style.color = '#4caf50';
+                chapter.innerHTML += ' ✓';
+              }
+            });
+          });
+        </script>
+        {% endblock %}
+        EOF
+
+    - name: Create additional assets
+      run: |
+        mkdir -p docs/assets/images
+        mkdir -p docs/assets/css
+        
+        # Create custom CSS
+        cat > docs/assets/css/extra.css << 'EOF'
+        .md-typeset h1 {
+          color: #1976d2;
+        }
+        
+        .md-typeset .highlight {
+          margin: 1em 0;
+        }
+        
+        .md-typeset code {
+          background-color: #f5f5f5;
+          border-radius: 3px;
+          padding: 0.1em 0.3em;
+        }
+        
+        .progress-tracker {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          padding: 1rem;
+          border-radius: 8px;
+          margin: 1rem 0;
+        }
+        
+        .chapter-card {
+          border: 1px solid #ddd;
+          border-radius: 8px;
+          padding: 1rem;
+          margin: 0.5rem 0;
+          transition: all 0.3s ease;
+        }
+        
+        .chapter-card:hover {
+          box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+          transform: translateY(-2px);
+        }
+        
+        .difficulty-easy { border-left: 4px solid #4caf50; }
+        .difficulty-medium { border-left: 4px solid #ff9800; }
+        .difficulty-hard { border-left: 4px solid #f44336; }
+        
+        .code-example {
+          background: #1e1e1e;
+          color: #d4d4d4;
+          padding: 1rem;
+          border-radius: 4px;
+          overflow-x: auto;
+        }
+        EOF
+
+    - name: Build with MkDocs
+      run: |
+        mkdocs build
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v3
+
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v2
+      with:
+        path: ./site
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
+
+  lighthouse:
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v9
+        with:
+          urls: |
+            https://sh20raj.github.io/DSA-Master-Guide/
+          uploadArtifacts: true
+          temporaryPublicStorage: true
